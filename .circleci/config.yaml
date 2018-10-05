@@ -1,0 +1,46 @@
+# ####################
+#
+# CircleCI Job Filters
+#
+# ####################
+build-filters: &build-filters
+  tags:
+    ignore: /.*/
+  branches:
+    only: /.*/
+
+deploy-filters: &deploy-filters
+  tags:
+    only: /.*/
+  branches:
+    ignore: /.*/
+
+# ####################
+#
+# CircleCI 2.0 Jobs
+#
+# ####################
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/buildpack-deps:bionic
+    working_directory: ~/cloc.me
+    steps:
+      - checkout
+      - run:
+          name: Testing CircleCI config
+          command:
+            echo "Success"
+
+# ####################
+#
+# CircleCI Workflow
+#
+# ####################
+workflows:
+  version: 2
+  cloc-me-workflow:
+    jobs:
+      - build:
+          filters: *build-filters
