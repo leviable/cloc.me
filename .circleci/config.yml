@@ -1,0 +1,52 @@
+# ####################
+#
+# CircleCI Job Filters
+#
+# ####################
+build-filters: &build-filters
+  tags:
+    ignore: /.*/
+  branches:
+    only: /.*/
+
+deploy-filters: &deploy-filters
+  tags:
+    only: /.*/
+  branches:
+    ignore: /.*/
+
+# ####################
+#
+# CircleCI 2.0 Jobs
+#
+# ####################
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/buildpack-deps:bionic
+    working_directory: ~/cloc.me
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run:
+          name: Build Docker Image
+          command: make build
+      - run:
+          name: Push to Docker Hub
+          command: |
+            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+            make tag-latest
+            docker push clocme/clocme:latest
+
+# ####################
+#
+# CircleCI Workflow
+#
+# ####################
+workflows:
+  version: 2
+  cloc-me-workflow:
+    jobs:
+      - build:
+          filters: *build-filters
