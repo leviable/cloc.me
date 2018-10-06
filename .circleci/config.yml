@@ -37,7 +37,7 @@ jobs:
           command: |
             echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
             make tag-latest
-            docker push clocme/clocme:latest
+            make push
 
 # ####################
 #

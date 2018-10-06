@@ -5,3 +5,6 @@ build:
 
 tag-latest:
 	docker tag $(DOCKER_REPO):local $(DOCKER_REPO):latest
+
+push:
+	docker push $(DOCKER_REPO):latest
