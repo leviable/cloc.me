@@ -27,11 +27,12 @@ jobs:
       - image: circleci/buildpack-deps:bionic
     working_directory: ~/cloc.me
     steps:
+      - setup_remote_docker
       - checkout
       - run:
-        name: Testing CircleCI config
-        command:
-          echo "Success"
+          name: Build Docker Image
+          command:
+            make build
 
 # ####################
 #
