@@ -51,6 +51,8 @@ jobs:
     steps:
       - setup_remote_docker
       - checkout
+      - run: make pull-latest
+      - run: make tag-latest-as-local
       - run: make build
       - run: *docker-login
       - run: make push-ci

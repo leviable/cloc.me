@@ -7,7 +7,7 @@ RUN apk add --no-cache git cloc
 COPY requirements.txt .
 
 RUN pip install -U --no-cache pip setuptools && \
-    pip install -U -r requirements.txt tox
+    pip install -U -r requirements.txt
 
 COPY *.py ./
 COPY tests/ ./tests
