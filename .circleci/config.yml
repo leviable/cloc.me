@@ -15,6 +15,12 @@ latest-filters: &latest-filters
   branches:
     only: master
 
+tag-filters: &tag-filters
+  tags:
+    only: /.*/
+  branches:
+    ignore: /.*/
+
 deploy-filters: &deploy-filters
   tags:
     only: /.*/
@@ -93,6 +99,19 @@ jobs:
       - run: make tag-latest
       - run: make push-latest
 
+  push-tagged:
+    docker:
+      - image: circleci/buildpack-deps:bionic
+    working_directory: ~/cloc.me
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run: *docker-login
+      - run: make pull-ci
+      - run: git fetch --tags
+      - run: make tag-git-tag
+      - run: make push-tagged
+
 # ####################
 #
 # CircleCI Workflow
@@ -122,4 +141,5 @@ workflows:
               - unit-test
               - functional-test
           filters: *latest-filters
-
+      - push-tagged:
+          filters: *tag-filters
