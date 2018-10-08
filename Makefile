@@ -35,7 +35,7 @@ test-functional:
 tag-latest:
 	docker tag $(DOCKER_REPO):local $(DOCKER_REPO):latest
 
-push:
+push-latest:
 	docker push $(DOCKER_REPO):latest
 
 push-ci:

@@ -9,6 +9,12 @@ build-filters: &build-filters
   branches:
     only: /.*/
 
+latest-filters: &latest-filters
+  tags:
+    ignore: /.*/
+  branches:
+    only: master
+
 deploy-filters: &deploy-filters
   tags:
     only: /.*/
@@ -40,21 +46,9 @@ jobs:
       - setup_remote_docker
       - checkout
       - run: make build
-        # - run:
-        #     name: make test-functional
-        #     command: |
-        #       python -m venv .venv
-        #       source .venv/bin/activate
-        #       pip install tox
-        #       make test-functional
       - run: *docker-login
       - run: make push-ci
-      # - run:
-      #     name: Push to Docker Hub
-      #     command: |
-      #       echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-      #       make tag-latest
-      #       make push
+
   lint:
     docker:
       - image: circleci/buildpack-deps:bionic
@@ -87,6 +81,18 @@ jobs:
       - run: make pull-ci
       - run: make test-functional
 
+  push-latest:
+    docker:
+      - image: circleci/buildpack-deps:bionic
+    working_directory: ~/cloc.me
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run: *docker-login
+      - run: make pull-ci
+      - run: make tag-latest
+      - run: make push-latest
+
 # ####################
 #
 # CircleCI Workflow
@@ -110,3 +116,10 @@ workflows:
           requires:
               - build
           filters: *build-filters
+      - push-latest:
+          requires:
+              - lint
+              - unit-test
+              - functional-test
+          filters: *latest-filters
+
