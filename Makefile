@@ -16,6 +16,9 @@ test-lint:
 
 test-unit:
 	docker run --rm -it \
+		--env CI \
+		--env CIRCLE \
+		--env-file <(env | grep CIRCLE_*) \
 		--entrypoint tox \
 		$(DOCKER_REPO):local \
 		-e unit
