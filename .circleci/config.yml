@@ -24,14 +24,21 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/buildpack-deps:bionic
+      - image: circleci/python:3.7
     working_directory: ~/cloc.me
     steps:
       - setup_remote_docker
       - checkout
-      - run:
-          name: Build Docker Image
-          command: make build
+      - run: make build
+      - run: make test-lint
+      - run: make test-unit
+        # - run:
+        #     name: make test-functional
+        #     command: |
+        #       python -m venv .venv
+        #       source .venv/bin/activate
+        #       pip install tox
+        #       make test-functional
       - run:
           name: Push to Docker Hub
           command: |
