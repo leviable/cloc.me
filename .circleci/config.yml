@@ -17,6 +17,16 @@ deploy-filters: &deploy-filters
 
 # ####################
 #
+# CircleCI steps
+#
+# ####################
+
+docker-login: &docker-login
+  name: Log into Docker Hub
+  command: echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+
+# ####################
+#
 # CircleCI 2.0 Jobs
 #
 # ####################
@@ -24,14 +34,12 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/buildpack-deps:bionic
     working_directory: ~/cloc.me
     steps:
       - setup_remote_docker
       - checkout
       - run: make build
-      - run: make test-lint
-      - run: make test-unit
         # - run:
         #     name: make test-functional
         #     command: |
@@ -39,12 +47,45 @@ jobs:
         #       source .venv/bin/activate
         #       pip install tox
         #       make test-functional
-      - run:
-          name: Push to Docker Hub
-          command: |
-            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-            make tag-latest
-            make push
+      - run: *docker-login
+      - run: make push-ci
+      # - run:
+      #     name: Push to Docker Hub
+      #     command: |
+      #       echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+      #       make tag-latest
+      #       make push
+  lint:
+    docker:
+      - image: circleci/buildpack-deps:bionic
+    working_directory: ~/cloc.me
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run: *docker-login
+      - run: make pull-ci
+      - run: make test-lint
+
+  unit-test:
+    docker:
+      - image: circleci/buildpack-deps:bionic
+    working_directory: ~/cloc.me
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run: *docker-login
+      - run: make pull-ci
+      - run: make test-unit
+
+  functional-test:
+    machine:
+        image: circleci/classic:latest
+    working_directory: ~/cloc.me
+    steps:
+      - checkout
+      - run: *docker-login
+      - run: make pull-ci
+      - run: make test-functional
 
 # ####################
 #
@@ -56,4 +97,16 @@ workflows:
   cloc-me-workflow:
     jobs:
       - build:
+          filters: *build-filters
+      - lint:
+          requires:
+              - build
+          filters: *build-filters
+      - unit-test:
+          requires:
+              - build
+          filters: *build-filters
+      - functional-test:
+          requires:
+              - build
           filters: *build-filters
