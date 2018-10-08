@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 DOCKER_REPO := clocme/clocme
 DOCKER_REPO_CI := clocme/clocme-ci
 GIT_HASH = $(shell git rev-parse --short HEAD)
@@ -10,18 +12,26 @@ test: test-lint test-unit test-functional
 
 test-lint:
 	docker run --rm -it \
-		--entrypoint tox \
+		--entrypoint ash \
 		$(DOCKER_REPO):local \
-		-e lint
+		-c ' \
+			set -e; \
+			pip install tox; \
+			tox -e lint; \
+		'
 
 test-unit:
 	docker run --rm -it \
+		--env-file <(env | grep CIRCLE) \
 		--env CI \
-		--env CIRCLE \
-		--env-file <(env | grep CIRCLE_*) \
-		--entrypoint tox \
+		--entrypoint ash \
 		$(DOCKER_REPO):local \
-		-e unit
+		-c ' \
+			set -e; \
+			pip install tox; \
+			tox -e unit; \
+			if [ -n "$$CIRCLE_SHA1" ]; then pip install codecov && codecov --commit=$$CIRCLE_SHA1; fi \
+		'
 
 test-functional:
 	docker run --rm -it \
@@ -44,6 +54,12 @@ tag-git-tag:
 
 push-latest:
 	docker push $(DOCKER_REPO):latest
+
+pull-latest:
+	docker pull $(DOCKER_REPO):latest
+
+tag-latest-as-local:
+	docker tag $(DOCKER_REPO):latest $(DOCKER_REPO):local
 
 push-tagged:
 	docker push $(DOCKER_REPO):$(GIT_TAG)
