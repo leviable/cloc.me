@@ -1,8 +1,19 @@
 FROM python:alpine
 
-WORKDIR /app
+WORKDIR /clocme
 
 RUN apk add --no-cache git cloc
 
-ENTRYPOINT ["python"]
-CMD ["--version"]
+COPY requirements.txt .
+
+RUN pip install -U --no-cache pip setuptools && \
+    pip install -U -r requirements.txt tox
+
+COPY *.py ./
+COPY tests/ ./tests
+COPY tox.ini ./
+
+RUN pip install -e  .
+
+ENTRYPOINT ["clocme"]
+CMD ["--foo" ]
