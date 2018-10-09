@@ -16,4 +16,3 @@ COPY tox.ini ./
 RUN pip install -e  .
 
 ENTRYPOINT ["clocme"]
-CMD ["--foo" ]

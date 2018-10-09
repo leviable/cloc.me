@@ -17,8 +17,11 @@ log = logging.getLogger("clocme")
 
 @click.command('')
 @click.option(
-    '--foo/--no-foo', default=True, help='Foo Option'
+    '--after-date', help='Only evaluate commits before this date'
 )
-def main(foo):
-    log.info("Hello, World")
-    clocme(foo)
+@click.option(
+    '--before-date', help='Only evaluate commits before this date'
+)
+def main(**kwargs):
+    log.info("Cloc Me started")
+    clocme(**kwargs)
