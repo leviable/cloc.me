@@ -1,7 +1,7 @@
 import click
 import logging
 
-from clocme import clocme
+from clocme import clocme, DEFAULT_BRANCH
 
 log_fmt = '%(asctime)s [%(name)s] [%(levelname)s] %(message)s'
 formatter = logging.Formatter(log_fmt)
@@ -17,8 +17,14 @@ log = logging.getLogger("clocme")
 
 @click.command('')
 @click.option(
-    '--foo/--no-foo', default=True, help='Foo Option'
+    '--after-date', help='Only evaluate commits before this date'
 )
-def main(foo):
-    log.info("Hello, World")
-    clocme(foo)
+@click.option(
+    '--before-date', help='Only evaluate commits before this date'
+)
+@click.option(
+    '--branch', help=f'Git branch to evaluate. Defaults to {DEFAULT_BRANCH}'
+)
+def main(**kwargs):
+    log.info("Cloc Me started")
+    clocme(**kwargs)
