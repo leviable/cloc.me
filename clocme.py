@@ -1,15 +1,19 @@
+from functools import partial
 import json
-import logging
 import os
-import shutil
+from pprint import pformat
 import subprocess
 
+import click
 from git import Repo
+from git.exc import GitCommandError
+from pymongo import MongoClient
 
-log = logging.getLogger(__name__)
+GREEN = partial(click.style, fg='green')
+RED = partial(click.style, fg='red')
+YELLOW = partial(click.style, fg='yellow')
 
-SOURCE_PATH = '/source'
-COPY_PATH = '/source-copy'
+COPY_PATH = '/source'
 DEFAULT_BRANCH = 'master'
 
 
@@ -17,36 +21,59 @@ class ClocMeError(Exception):
     pass
 
 
-def prep_repo(source=SOURCE_PATH, copy_to=COPY_PATH):
-    if not os.path.exists(source) or not os.listdir(source):
-        raise ClocMeError(f'You must mount a git repo into {source}')
+def pull_repo(repo_url, copy_to=COPY_PATH):
+    repo_path = os.path.join(copy_to, repo_url)
+    try:
+        repo = Repo.clone_from(repo_url, repo_path)
+        click.echo(f'Pulled repo {GREEN(repo_url)}')
+    except GitCommandError as e:
+        if 'already exists and is not an empty directory' not in str(e):
+            raise
+        repo = Repo(repo_path)
+        click.echo(f'Using previously pulled repo {GREEN(repo_url)}')
 
-    log.info(f'Copying source from {source} to {copy_to}')
-    shutil.copytree(source, copy_to)
+    return repo
 
 
-def walk_commits(**kwargs):
-    repo = Repo(COPY_PATH)
+def prep_repo(repo, branch):
+    # This might not be needed
+    pass
 
+
+def walk_commits(repo, branch, **kwargs):
     iter_args = dict()
     if kwargs.get('after_date'):
         iter_args['after'] = kwargs['after_date']
     if kwargs.get('before_date'):
         iter_args['before'] = kwargs['before_date']
 
-    branch = kwargs.get('branch', DEFAULT_BRANCH)
-
     for commit in repo.iter_commits(branch, **iter_args):
         repo.git.checkout(commit.hexsha)
         yield commit.hexsha, commit.committed_datetime
 
 
-def clocme(**kwargs):
-    log.info("In clocme")
-    prep_repo()
-    for commit_hash, commit_date in walk_commits(**kwargs):
-        log.info(f'Working with commit {commit_hash} for date {commit_date}')
+def clocme(repo_url, **kwargs):
+    click.echo("In clocme")
+
+    click.echo("Getting mongodb client")
+    db = MongoClient(os.environ['MONGO_HOST'], int(os.environ['MONGO_PORT'])).clocme
+
+    click.echo("Fetching Repo")
+    repo = pull_repo(repo_url)
+    branch = kwargs.pop('branch', DEFAULT_BRANCH)
+    prep_repo(repo, branch)
+
+    repo_col = db[repo_url]
+
+    for commit_hash, commit_date in walk_commits(repo, branch, **kwargs):
+        click.echo(f'Working with commit {commit_hash} for date {commit_date}')
+        if repo_col.find_one({'commit': commit_hash}):
+            click.echo(f'Commit alread cloc\'d, moving to next commit')
+            continue
         cloc_cmd = f'cloc --git --json {COPY_PATH}'
         cloc_out = subprocess.check_output(cloc_cmd, shell=True)
         result = json.loads(cloc_out) if cloc_out != b'' else dict()
-        log.info(f'Result was {result}')
+        click.echo(f'Result was {pformat(result)}')
+        repo_col.insert_one({'commit': commit_hash,
+                             'datetime': commit_date,
+                             'result': result})
