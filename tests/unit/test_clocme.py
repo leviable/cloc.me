@@ -1,11 +1,12 @@
 from datetime import datetime as dt, timedelta
-from pathlib import Path
-import tempfile
 from unittest.mock import call, patch
 
 import pytest
+from git.exc import GitCommandError
 
 import clocme
+
+MOCK_REPO = 'https://github.com/not/real'
 
 
 class MockCommit(object):
@@ -22,38 +23,41 @@ def commit_factory():
     return factory
 
 
-@patch('clocme.shutil')
-def test_prep_repo_source_does_not_exist_exc(shutil_mock):
-    bad_source = '/this-doesnt-exist'
-    with pytest.raises(clocme.ClocMeError) as exc:
-        clocme.prep_repo(source=bad_source)
+@patch('clocme.Repo')
+def test_pull_repo_from_github(repo_mock):
+    clocme.pull_repo(MOCK_REPO)
 
-    assert "You must mount" in str(exc)
-    assert bad_source in str(exc)
-    assert not shutil_mock.copytree.called
-
-
-@patch('clocme.shutil')
-def test_prep_repo_source_is_empty_exc(shutil_mock):
-    with tempfile.TemporaryDirectory() as empty_dir:
-        with pytest.raises(clocme.ClocMeError) as exc:
-            clocme.prep_repo(source=empty_dir)
-
-    assert "You must mount" in str(exc)
-    assert empty_dir in str(exc)
-    assert not shutil_mock.copytree.called
+    assert repo_mock.clone_from.called
+    assert MOCK_REPO in str(repo_mock.clone_from.call_args)
+    assert clocme.COPY_PATH in str(repo_mock.clone_from.call_args)
+    assert not repo_mock.called
 
 
-@patch('clocme.shutil')
-def test_prep_repo_source_copy_success(shutil_mock):
-    copy_to = '/copy-to-this-dir'
-    with tempfile.TemporaryDirectory() as temp_dir:
-        Path(f'{temp_dir}/file.txt').touch()
-        clocme.prep_repo(source=temp_dir, copy_to=copy_to)
+@patch('clocme.Repo')
+def test_pull_repo_existing_repo_found(repo_mock):
+    exc_msg = 'already exists and is not an empty directory'
+    repo_mock.clone_from.side_effect = GitCommandError('clone_from', exc_msg)
+    clocme.pull_repo(MOCK_REPO)
 
-    assert shutil_mock.copytree.called
-    assert temp_dir in str(shutil_mock.copytree.call_args)
-    assert copy_to in str(shutil_mock.copytree.call_args)
+    assert repo_mock.clone_from.called
+    assert MOCK_REPO in str(repo_mock.clone_from.call_args)
+    assert clocme.COPY_PATH in str(repo_mock.clone_from.call_args)
+    assert repo_mock.called
+    assert repo_mock.call_args[0][0].startswith(clocme.COPY_PATH)
+    assert repo_mock.call_args[0][0].endswith(MOCK_REPO)
+
+
+@patch('clocme.Repo')
+def test_pull_repo_exc_reraise(repo_mock):
+    exc_msg = 'something else'
+    repo_mock.clone_from.side_effect = GitCommandError('foobar', exc_msg)
+    with pytest.raises(GitCommandError) as exc:
+        clocme.pull_repo(MOCK_REPO)
+
+    assert repo_mock.clone_from.called
+    assert not repo_mock.called
+    assert 'foobar' in exc.value.command
+    assert 'something else' in exc.value.status
 
 
 @patch('clocme.Repo')
@@ -61,7 +65,7 @@ def test_walk_commits_with_no_kwargs(repo_mock, commit_factory):
     repo_mock.return_value = repo_mock
     repo_mock.iter_commits.return_value = commits = commit_factory(3)
 
-    results = list(clocme.walk_commits(**dict()))
+    results = list(clocme.walk_commits(repo_mock, clocme.DEFAULT_BRANCH, **dict()))
 
     assert repo_mock.iter_commits.call_args == call(clocme.DEFAULT_BRANCH)
 
@@ -83,7 +87,7 @@ def test_walk_commits_w_kwargs(repo_mock, commit_factory):
               'after_date': '2018-01-01',
               'before_date': '2018-02-02'}
 
-    results = list(clocme.walk_commits(**kwargs))
+    results = list(clocme.walk_commits(repo_mock, **kwargs))
 
     assert '2018-01-01' in str(repo_mock.iter_commits.call_args)
     assert '2018-02-02' in str(repo_mock.iter_commits.call_args)
@@ -97,9 +101,3 @@ def test_walk_commits_w_kwargs(repo_mock, commit_factory):
     assert results[0] == (commits[0].hexsha, commits[0].committed_datetime)
     assert results[1] == (commits[1].hexsha, commits[1].committed_datetime)
     assert results[2] == (commits[2].hexsha, commits[2].committed_datetime)
-
-
-@patch('clocme.prep_repo')
-@patch('clocme.subprocess')
-def test_clocme_with_no_args(_, sp_mock):
-    pass

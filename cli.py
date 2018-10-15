@@ -5,7 +5,14 @@ from clocme import clocme, DEFAULT_BRANCH
 
 @click.command('')
 @click.argument('repo_url')
-@click.option('-v', '--verbose', count=True)
+@click.option(
+    '--mongo-host', default='localhost', envvar='MONGO_HOST',
+    help='Mongodb host to connect to'
+)
+@click.option(
+    '--mongo-port', default=27017, envvar='MONGO_PORT',
+    help='Mongodb port to connect to'
+)
 @click.option(
     '--after-date', help='Only evaluate commits before this date'
 )

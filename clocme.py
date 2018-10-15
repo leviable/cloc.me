@@ -35,11 +35,6 @@ def pull_repo(repo_url, copy_to=COPY_PATH):
     return repo
 
 
-def prep_repo(repo, branch):
-    # This might not be needed
-    pass
-
-
 def walk_commits(repo, branch, **kwargs):
     iter_args = dict()
     if kwargs.get('after_date'):
@@ -55,13 +50,13 @@ def walk_commits(repo, branch, **kwargs):
 def clocme(repo_url, **kwargs):
     click.echo("In clocme")
 
-    click.echo("Getting mongodb client")
-    db = MongoClient(os.environ['MONGO_HOST'], int(os.environ['MONGO_PORT'])).clocme
+    m_host, m_port = kwargs['mongo_host'], kwargs['mongo_port']
+    click.echo(f"Connecting to mongodb at {m_host}:{m_port}")
+    db = MongoClient(m_host, m_port).clocme
 
     click.echo("Fetching Repo")
     repo = pull_repo(repo_url)
     branch = kwargs.pop('branch', DEFAULT_BRANCH)
-    prep_repo(repo, branch)
 
     repo_col = db[repo_url]
 
