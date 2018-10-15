@@ -67,7 +67,7 @@ def clocme(repo_url, **kwargs):
         click.echo(f'Working with commit {commit_hash} for date {commit_date}')
 
         if repo_col.find_one({'commit': commit_hash}):
-            click.echo(f'Commit alread cloc\'d, moving to next commit')
+            click.echo(f'Commit alread cloced, moving to next commit')
             continue
 
         cloc_out = subprocess.check_output(cloc_cmd, shell=True)
