@@ -4,6 +4,8 @@ WORKDIR /clocme
 
 RUN apk add --no-cache git cloc
 
+ENV LC_ALL C
+
 COPY requirements.txt .
 
 RUN pip install -U --no-cache pip setuptools && \
