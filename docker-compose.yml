@@ -1,0 +1,31 @@
+version: '3'
+services:
+  clocme:
+    build: .
+    container_name: "clocme"
+    image: clocme/clocme:local
+    environment:
+        MONGO_HOST: mongodb
+        MONGO_PORT: 27017
+    volumes:
+      - clocme-vol:/source
+    depends_on:
+      - mongodb
+    stdin_open: true
+    tty: true
+  mongodb:
+    image: mongo:latest
+    container_name: "mongodb"
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/dev/null
+    volumes:
+      - mongodb-vol:/data/db
+    ports:
+      - 27017:27017
+    # command: mongod --smallfiles --logpath=/dev/null # --quiet
+volumes:
+  mongodb-vol:
+    driver: local
+  clocme-vol:
+    driver: local
