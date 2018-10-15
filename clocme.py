@@ -3,6 +3,7 @@ import json
 import os
 from pprint import pformat
 import subprocess
+import urllib
 
 import click
 from git import Repo
@@ -22,7 +23,8 @@ class ClocMeError(Exception):
 
 
 def pull_repo(repo_url, copy_to=COPY_PATH):
-    repo_path = os.path.join(copy_to, repo_url)
+    repo_path = os.path.join(copy_to, urllib.parse.quote(repo_url, safe=''))
+    click.echo(f'Repo path is {RED(repo_path)}')
     try:
         repo = Repo.clone_from(repo_url, repo_path)
         click.echo(f'Pulled repo {GREEN(repo_url)}')
@@ -32,7 +34,7 @@ def pull_repo(repo_url, copy_to=COPY_PATH):
         repo = Repo(repo_path)
         click.echo(f'Using previously pulled repo {GREEN(repo_url)}')
 
-    return repo
+    return repo, repo_path
 
 
 def walk_commits(repo, branch, **kwargs):
@@ -55,19 +57,21 @@ def clocme(repo_url, **kwargs):
     db = MongoClient(m_host, m_port).clocme
 
     click.echo("Fetching Repo")
-    repo = pull_repo(repo_url)
+    repo, repo_path = pull_repo(repo_url)
     branch = kwargs.pop('branch', DEFAULT_BRANCH)
 
     repo_col = db[repo_url]
 
+    cloc_cmd = f'cloc --git --json {repo_path}'
     for commit_hash, commit_date in walk_commits(repo, branch, **kwargs):
         click.echo(f'Working with commit {commit_hash} for date {commit_date}')
+
         if repo_col.find_one({'commit': commit_hash}):
             click.echo(f'Commit alread cloc\'d, moving to next commit')
             continue
-        cloc_cmd = f'cloc --git --json {COPY_PATH}'
+
         cloc_out = subprocess.check_output(cloc_cmd, shell=True)
-        result = json.loads(cloc_out) if cloc_out != b'' else dict()
+        result = json.loads(cloc_out) if cloc_out else dict()
         click.echo(f'Result was {pformat(result)}')
         repo_col.insert_one({'commit': commit_hash,
                              'datetime': commit_date,

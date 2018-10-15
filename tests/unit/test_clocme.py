@@ -44,7 +44,7 @@ def test_pull_repo_existing_repo_found(repo_mock):
     assert clocme.COPY_PATH in str(repo_mock.clone_from.call_args)
     assert repo_mock.called
     assert repo_mock.call_args[0][0].startswith(clocme.COPY_PATH)
-    assert repo_mock.call_args[0][0].endswith(MOCK_REPO)
+    assert repo_mock.call_args[0][0].endswith(MOCK_REPO.split('/')[-1])
 
 
 @patch('clocme.Repo')
